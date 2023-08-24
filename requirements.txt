@@ -3,5 +3,4 @@ openai>=0.27.0
 tiktoken>=0.3.0
 PyYAML==6.0
 supabase>1.0
-python-dotenv==0.21.0
 pydub==0.25.1
