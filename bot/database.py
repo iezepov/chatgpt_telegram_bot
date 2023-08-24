@@ -81,8 +81,8 @@ class Database:
 
     def get_user_attribute(self, user_id: int, key: str):
         self.check_if_user_exists(user_id, raise_exception=True)
-        user_dict = self.users_table.select("*").eq("id", user_id).single().execute()
-        return user_dict.data.get(key)
+        user_dict = self.users_table.select(key).eq("id", user_id).single().execute()
+        return user_dict.data[key]
 
     def set_user_attribute(self, user_id: int, key: str, value: Any):
         self.check_if_user_exists(user_id, raise_exception=True)
