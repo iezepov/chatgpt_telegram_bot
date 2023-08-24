@@ -21,7 +21,7 @@ OPENAI_COMPLETION_OPTIONS = {
 
 class ChatGPT:
     def __init__(self, model="gpt-3.5-turbo"):
-        assert model in {"text-davinci-003", "gpt-3.5-turbo-16k", "gpt-3.5-turbo", "gpt-4"}, f"Unknown model: {model}"
+        assert model in {"gpt-3.5-turbo-16k", "gpt-3.5-turbo", "gpt-4"}, f"Unknown model: {model}"
         self.model = model
 
     async def send_message(self, message, dialog_messages=[], chat_mode="assistant"):
@@ -40,14 +40,6 @@ class ChatGPT:
                         **OPENAI_COMPLETION_OPTIONS
                     )
                     answer = r.choices[0].message["content"]
-                elif self.model == "text-davinci-003":
-                    prompt = self._generate_prompt(message, dialog_messages, chat_mode)
-                    r = await openai.Completion.acreate(
-                        engine=self.model,
-                        prompt=prompt,
-                        **OPENAI_COMPLETION_OPTIONS
-                    )
-                    answer = r.choices[0].text
                 else:
                     raise ValueError(f"Unknown model: {self.model}")
 
@@ -89,21 +81,6 @@ class ChatGPT:
                             n_input_tokens, n_output_tokens = self._count_tokens_from_messages(messages, answer, model=self.model)
                             n_first_dialog_messages_removed = n_dialog_messages_before - len(dialog_messages)
                             yield "not_finished", answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
-                elif self.model == "text-davinci-003":
-                    prompt = self._generate_prompt(message, dialog_messages, chat_mode)
-                    r_gen = await openai.Completion.acreate(
-                        engine=self.model,
-                        prompt=prompt,
-                        stream=True,
-                        **OPENAI_COMPLETION_OPTIONS
-                    )
-
-                    answer = ""
-                    async for r_item in r_gen:
-                        answer += r_item.choices[0].text
-                        n_input_tokens, n_output_tokens = self._count_tokens_from_prompt(prompt, answer, model=self.model)
-                        n_first_dialog_messages_removed = n_dialog_messages_before - len(dialog_messages)
-                        yield "not_finished", answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed
 
                 answer = self._postprocess_answer(answer)
 
@@ -115,23 +92,6 @@ class ChatGPT:
                 dialog_messages = dialog_messages[1:]
 
         yield "finished", answer, (n_input_tokens, n_output_tokens), n_first_dialog_messages_removed  # sending final answer
-
-    def _generate_prompt(self, message, dialog_messages, chat_mode):
-        prompt = config.chat_modes[chat_mode]["prompt_start"]
-        prompt += "\n\n"
-
-        # add chat context
-        if len(dialog_messages) > 0:
-            prompt += "Chat:\n"
-            for dialog_message in dialog_messages:
-                prompt += f"User: {dialog_message['user']}\n"
-                prompt += f"Assistant: {dialog_message['bot']}\n"
-
-        # current message
-        prompt += f"User: {message}\n"
-        prompt += "Assistant: "
-
-        return prompt
 
     def _generate_prompt_messages(self, message, dialog_messages, chat_mode):
         prompt = config.chat_modes[chat_mode]["prompt_start"]
@@ -176,14 +136,6 @@ class ChatGPT:
 
         # output
         n_output_tokens = 1 + len(encoding.encode(answer))
-
-        return n_input_tokens, n_output_tokens
-
-    def _count_tokens_from_prompt(self, prompt, answer, model="text-davinci-003"):
-        encoding = tiktoken.encoding_for_model(model)
-
-        n_input_tokens = len(encoding.encode(prompt)) + 1
-        n_output_tokens = len(encoding.encode(answer))
 
         return n_input_tokens, n_output_tokens
 
