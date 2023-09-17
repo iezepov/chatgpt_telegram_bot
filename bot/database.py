@@ -1,6 +1,5 @@
 from typing import Optional, Any
 
-import supabase
 import uuid
 from datetime import datetime
 from supabase import create_client, Client
@@ -37,22 +36,17 @@ class Database:
         user_dict = {
             "id": user_id,
             "chat_id": chat_id,
-
             "username": username,
             "first_name": first_name,
             "last_name": last_name,
-
             "last_interaction": datetime.utcnow().isoformat(),
             "first_seen": datetime.utcnow().isoformat(),
-
             "current_dialog_id": None,
             "current_chat_mode": "assistant",
             "current_model": config.models["available_text_models"][0],
-
             "n_used_tokens": {},
-
             "n_generated_images": 0,
-            "n_transcribed_seconds": 0.0  # voice message transcription
+            "n_transcribed_seconds": 0.0,  # voice message transcription
         }
 
         if not self.check_if_user_exists(user_id):
@@ -68,7 +62,7 @@ class Database:
             "chat_mode": self.get_user_attribute(user_id, "current_chat_mode"),
             "start_time": datetime.utcnow().isoformat(),
             "model": self.get_user_attribute(user_id, "current_model"),
-            "messages": []
+            "messages": [],
         }
         print(dialog_dict)
 
@@ -76,7 +70,9 @@ class Database:
         self.dialogues_table.insert(dialog_dict).execute()
 
         # update user's current dialog
-        self.users_table.update({"current_dialog_id": dialog_id}).eq("id", user_id).execute()
+        self.users_table.update({"current_dialog_id": dialog_id}).eq(
+            "id", user_id
+        ).execute()
         return dialog_id
 
     def get_user_attribute(self, user_id: int, key: str):
@@ -88,7 +84,9 @@ class Database:
         self.check_if_user_exists(user_id, raise_exception=True)
         self.users_table.update({key: value}).eq("id", user_id).execute()
 
-    def update_n_used_tokens(self, user_id: int, model: str, n_input_tokens: int, n_output_tokens: int):
+    def update_n_used_tokens(
+        self, user_id: int, model: str, n_input_tokens: int, n_output_tokens: int
+    ):
         n_used_tokens_dict = self.get_user_attribute(user_id, "n_used_tokens")
 
         if model in n_used_tokens_dict:
@@ -97,7 +95,7 @@ class Database:
         else:
             n_used_tokens_dict[model] = {
                 "n_input_tokens": n_input_tokens,
-                "n_output_tokens": n_output_tokens
+                "n_output_tokens": n_output_tokens,
             }
 
         self.set_user_attribute(user_id, "n_used_tokens", n_used_tokens_dict)
@@ -108,13 +106,22 @@ class Database:
         if dialog_id is None:
             dialog_id = self.get_user_attribute(user_id, "current_dialog_id")
 
-        dialog_dict = self.dialogues_table.select("messages").eq("id", dialog_id).single().execute()
+        dialog_dict = (
+            self.dialogues_table.select("messages")
+            .eq("id", dialog_id)
+            .single()
+            .execute()
+        )
         return dialog_dict.data["messages"]
 
-    def set_dialog_messages(self, user_id: int, dialog_messages: list, dialog_id: Optional[str] = None):
+    def set_dialog_messages(
+        self, user_id: int, dialog_messages: list, dialog_id: Optional[str] = None
+    ):
         self.check_if_user_exists(user_id, raise_exception=True)
 
         if dialog_id is None:
             dialog_id = self.get_user_attribute(user_id, "current_dialog_id")
 
-        self.dialogues_table.update({"messages": dialog_messages}).eq("id", dialog_id).execute()
+        self.dialogues_table.update({"messages": dialog_messages}).eq(
+            "id", dialog_id
+        ).execute()
